@@ -79,15 +79,15 @@ void groupedGemm_(std::vector<cutlass::gemm::GemmCoord> problem_sizes, std::vect
 
     using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<ElementA, LayoutA,
         cutlass::ComplexTransform::kNone, kAlignmentA, ElementB, LayoutB, cutlass::ComplexTransform::kNone, kAlignmentB,
-        ElementOutput, LayoutC, ElementAccumulator, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
-        cutlass::gemm::GemmShape<M1, N1, K1>, cutlass::gemm::GemmShape<M2, N2, K2>, cutlass::gemm::GemmShape<16, 8, 16>,
+        ElementOutput, LayoutC, ElementAccumulator, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm70,
+        cutlass::gemm::GemmShape<M1, N1, K1>, cutlass::gemm::GemmShape<M2, N2, K2>, cutlass::gemm::GemmShape<8, 8, 4>,
         cutlass::epilogue::thread::LinearCombination<ElementOutput, 128 / cutlass::sizeof_bits<ElementOutput>::value,
             ElementAccumulator, ElementAccumulator>,
         // NOTE: Threadblock swizzling is currently not supported by CUTLASS's grouped kernels.
         // This parameter is passed in at present to match the APIs of other kernels. The parameter
         // is unused within the kernel.
         cutlass::gemm::threadblock::GemmBatchedIdentityThreadblockSwizzle,
-        4, // kStages
+        2, // kStages
         cutlass::gemm::kernel::GroupScheduleMode::kDeviceOnly>::GemmKernel;
 
     using Gemm = cutlass::gemm::device::GemmGrouped<GemmKernel>;
@@ -185,13 +185,13 @@ void groupedGemmType_(std::vector<cutlass::gemm::GemmCoord> problem_sizes, std::
     {
         TLLM_CHECK_WITH_INFO(false, "not support float input/output");
     }
-#ifdef ENABLE_BF16
-    else if (dataType == nvinfer1::DataType::kBF16)
-    {
-        groupedGemm_<M1, N1, K1, M2, N2, K2, cutlass::bfloat16_t>(problem_sizes, ptrA, ptrB, ptrC, ptrD,
-            gemmParamsWorkSpace, gemmParamsWorkSpaceSize, gemmWorkSpace, gemmWorkspaceSize, dataType, stream);
-    }
-#endif
+// #ifdef ENABLE_BF16
+//     else if (dataType == nvinfer1::DataType::kBF16)
+//     {
+//         groupedGemm_<M1, N1, K1, M2, N2, K2, cutlass::bfloat16_t>(problem_sizes, ptrA, ptrB, ptrC, ptrD,
+//             gemmParamsWorkSpace, gemmParamsWorkSpaceSize, gemmWorkSpace, gemmWorkspaceSize, dataType, stream);
+//     }
+// #endif
 }
 
 void groupedGemm(std::vector<cutlass::gemm::GemmCoord> problem_sizes, std::vector<void*> ptrA, std::vector<void*> ptrB,
@@ -200,7 +200,7 @@ void groupedGemm(std::vector<cutlass::gemm::GemmCoord> problem_sizes, std::vecto
 {
     if (isLoraIn)
     {
-        groupedGemmType_<16, 32, 64, 16, 32, 64>(problem_sizes, ptrA, ptrB, ptrC, ptrD, gemmParamsWorkSpace,
+        groupedGemmType_<128, 128, 32, 64, 64, 32>(problem_sizes, ptrA, ptrB, ptrC, ptrD, gemmParamsWorkSpace,
             gemmParamsWorkSpaceSize, gemmWorkSpace, gemmWorkspaceSize, dataType, stream);
     }
     else
